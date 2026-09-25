@@ -263,7 +263,7 @@ function shell(active, inner) {
   <header class="top">
     <a class="brand" href="#/tasks">Вероятность и статистика <span>банк задач</span></a>
     <nav>${nav.map(([h, t]) => `<a href="${h}" class="${active === h ? "on" : ""}">${t}</a>`).join("")}</nav>
-    <div class="me">${esc(S.profile.full_name)}${isAdmin() ? ' <span class="tag">админ</span>' : ""} <button class="link" data-act="logout">Выйти</button></div>
+    <div class="me"><a href="#/profile" title="Мой профиль">${esc(S.profile.full_name)}</a>${isAdmin() ? ' <span class="tag">админ</span>' : ""} <button class="link" data-act="logout">Выйти</button></div>
   </header>
   <main>${inner}</main>`;
 }
@@ -285,6 +285,7 @@ async function route() {
       case "research": return await pageResearch();
       case "admin": return await pageAdmin();
       case "topics": return await pageTopics();
+      case "profile": return await pageProfile();
       default: return await pageTasks();
     }
   } catch (e) { console.error(e); }
@@ -1016,6 +1017,60 @@ async function pageAdmin() {
       valid_until: new Date(Date.now() + (+f.days || 30) * 864e5).toISOString(), max_uses: +f.max || null,
     }));
     toast("Код создан"); pageAdmin();
+  };
+}
+
+// ------------------------------------------------------------------ мой профиль
+async function pageProfile() {
+  const { data: st } = await sb.rpc("my_stats");
+  const m = (st && st[0]) || null;
+  shell("#/profile", `
+    <h1>Мой профиль</h1>
+    <section class="panel">
+      <h2>Данные</h2>
+      <form id="prof" class="stack narrow">
+        <label>ФИО (видно коллегам под вашими задачами и комментариями)<input name="full_name" value="${esc(S.profile.full_name)}" required maxlength="200"></label>
+        <label>Школа / организация<input name="school" value="${esc(S.profile.school)}" maxlength="300"></label>
+        <label>Почта (логин, видна только администратору)<input value="${esc(S.user.email)}" disabled></label>
+        <p class="small muted">Роль: ${isAdmin() ? "администратор" : "учитель"} · в системе с ${fmtDate(S.user.created_at)} · политика конфиденциальности принята ${fmtDate(S.profile.consent_at)}</p>
+        <div class="row"><button class="btn primary">Сохранить</button></div>
+      </form>
+    </section>
+    <section class="panel">
+      <h2>Сменить пароль</h2>
+      <form id="pw" class="stack narrow">
+        <label>Новый пароль (не короче 8 символов)<input name="p1" type="password" minlength="8" required autocomplete="new-password"></label>
+        <label>Повторите пароль<input name="p2" type="password" minlength="8" required autocomplete="new-password"></label>
+        <div class="row"><button class="btn">Сменить пароль</button></div>
+      </form>
+    </section>
+    ${m ? `<section class="panel">
+      <h2>Мой вклад в банк</h2>
+      <table class="tbl">
+        <tr><td>Опубликовано задач</td><td><b>${m.tasks}</b>${m.ai_tasks ? ` <span class="small muted">(из них проверенных аналогов от ИИ: ${m.ai_tasks})</span>` : ""}</td></tr>
+        <tr><td>Методических комментариев</td><td><b>${m.comments}</b></td></tr>
+        <tr><td>Запросов к ИИ-помощнику</td><td><b>${m.ai_requests}</b></td></tr>
+        <tr><td>Классов</td><td><b>${m.classes}</b></td></tr>
+        <tr><td>Цепочек</td><td><b>${m.chains}</b>${m.shared_chains ? ` <span class="small muted">(общих: ${m.shared_chains}, коллеги скопировали: ${m.chain_copies})</span>` : ""}</td></tr>
+      </table></section>` : ""}
+    <section class="panel">
+      <h2>Удаление аккаунта</h2>
+      <p class="small">Чтобы удалить аккаунт и личные данные (классы, цепочки, журнал запросов к ИИ), напишите администратору. Добавленные вами задачи и комментарии можно оставить в общем банке без подписи или удалить вместе с аккаунтом.</p>
+      <button class="link" data-act="logout">Выйти из аккаунта</button>
+    </section>`);
+  document.getElementById("prof").onsubmit = async (e) => {
+    e.preventDefault(); const f = form(e.target);
+    if (!f.full_name.trim()) return toast("ФИО не может быть пустым", true);
+    await q(sb.rpc("update_my_profile", { p_full_name: dash(f.full_name.trim()), p_school: dash(f.school.trim()) }));
+    S.profile.full_name = dash(f.full_name.trim()); S.profile.school = dash(f.school.trim()) || null;
+    toast("Профиль сохранён"); pageProfile();
+  };
+  document.getElementById("pw").onsubmit = async (e) => {
+    e.preventDefault(); const f = form(e.target);
+    if (f.p1 !== f.p2) return toast("Пароли не совпадают", true);
+    const { error } = await sb.auth.updateUser({ password: f.p1 });
+    if (error) return toast(/same/i.test(error.message) ? "Новый пароль совпадает со старым" : /weak|short|characters/i.test(error.message) ? "Пароль слишком простой" : /reauth|recent/i.test(error.message) ? "Для смены пароля выйдите и войдите снова, затем повторите" : "Ошибка: " + error.message, true);
+    e.target.reset(); toast("Пароль изменён");
   };
 }
 
