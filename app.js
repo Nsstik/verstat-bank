@@ -295,11 +295,16 @@ window.addEventListener("hashchange", () => {
 });
 
 // ------------------------------------------------------------------ выбор раздела/темы
-function sectionOptions(sel) {
-  return `<option value="">Все разделы</option>` + S.sections.map((s) => `<option value="${s.id}" ${+sel === s.id ? "selected" : ""}>${esc(s.name)}</option>`).join("");
+// тема подходит классу, если у неё указан этот класс или класс не указан вовсе
+const topicFitsGrade = (t, grade) => !grade || !t.grade || t.grade === +grade;
+function sectionOptions(sel, grade) {
+  const list = S.sections.filter((s) => !grade || S.topics.some((t) => t.section_id === s.id && topicFitsGrade(t, grade)));
+  return `<option value="">Все разделы</option>` + list.map((s) => `<option value="${s.id}" ${+sel === s.id ? "selected" : ""}>${esc(s.name)}</option>`).join("");
 }
-function topicOptions(section, sel, allLabel = "Все темы") {
-  const list = S.topics.filter((t) => !section || t.section_id === +section);
+function topicOptions(section, sel, allLabel = "Все темы", grade = "") {
+  const secOrder = (id) => S.sections.findIndex((x) => x.id === id);
+  const list = S.topics.filter((t) => (!section || t.section_id === +section) && topicFitsGrade(t, grade))
+    .sort((x, y) => secOrder(x.section_id) - secOrder(y.section_id) || x.sort_order - y.sort_order);
   return (allLabel ? `<option value="">${allLabel}</option>` : "") + list.map((t) =>
     `<option value="${t.id}" ${+sel === t.id ? "selected" : ""}>${esc(t.name)}${t.grade ? ` (${t.grade} кл.)` : ""}</option>`).join("");
 }
@@ -334,9 +339,9 @@ async function pageTasks() {
   shell("#/tasks", `
     <section class="filters">
       <input id="fq" placeholder="Поиск по тексту условия…" value="${esc(f.q)}">
-      <select id="fsec">${sectionOptions(f.section)}</select>
-      <select id="ftop">${topicOptions(f.section, f.topic)}</select>
-      <select id="fgr"><option value="">Любой класс</option>${[7, 8, 9, 10, 11].map((g) => `<option ${+f.grade === g ? "selected" : ""}>${g}</option>`).join("")}</select>
+      <select id="fgr"><option value="">Любой класс</option>${[7, 8, 9, 10, 11].map((g) => `<option value="${g}" ${+f.grade === g ? "selected" : ""}>${g} класс</option>`).join("")}</select>
+      <select id="fsec">${sectionOptions(f.section, f.grade)}</select>
+      <select id="ftop">${topicOptions(f.section, f.topic, "Все темы", f.grade)}</select>
       <select id="fdf"><option value="">Любая сложность</option>${[1, 2, 3, 4, 5].map((d) => `<option ${+f.diff === d ? "selected" : ""}>${d}</option>`).join("")}</select>
       <label class="check"><input type="checkbox" id="fmine" ${f.mine ? "checked" : ""}> мои</label>
     </section>
@@ -349,8 +354,13 @@ async function pageTasks() {
   };
   const fq = document.getElementById("fq"), fsec = document.getElementById("fsec"), ftop = document.getElementById("ftop"),
     fgr = document.getElementById("fgr"), fdf = document.getElementById("fdf"), fmine = document.getElementById("fmine");
-  fsec.onchange = () => { ftop.innerHTML = topicOptions(fsec.value, ""); upd(); };
-  [ftop, fgr, fdf, fmine].forEach((el) => (el.onchange = upd));
+  fsec.onchange = () => { ftop.innerHTML = topicOptions(fsec.value, ftop.value, "Все темы", fgr.value); upd(); };
+  fgr.onchange = () => {              // при смене класса оставляем только подходящие разделы и темы
+    fsec.innerHTML = sectionOptions(fsec.value, fgr.value);
+    ftop.innerHTML = topicOptions(fsec.value, ftop.value, "Все темы", fgr.value);
+    upd();
+  };
+  [ftop, fdf, fmine].forEach((el) => (el.onchange = upd));
   fq.oninput = () => { clearTimeout(upd._t); upd._t = setTimeout(upd, 300); };
   loadList();
 }
@@ -841,11 +851,11 @@ function pageVariant() {
     <h1>Формирование варианта</h1>
     <form id="vf" class="stack narrow">
       <div class="row">
+        <label>Класс<select name="grade" id="vgr"><option value="">любой</option>${[7, 8, 9, 10, 11].map((g) => `<option value="${g}">${g} класс</option>`).join("")}</select></label>
         <label>Раздел<select name="section" id="vsec">${sectionOptions("")}</select></label>
         <label>Тема<select name="topic" id="vtop">${topicOptions("", "")}</select></label>
       </div>
       <div class="row">
-        <label>Класс<select name="grade"><option value="">любой</option>${[7, 8, 9, 10, 11].map((g) => `<option>${g}</option>`).join("")}</select></label>
         <label>Число задач<input type="number" name="n" value="5" min="1" max="30"></label>
         <label>Сложность от<select name="dmin">${[1, 2, 3, 4, 5].map((d) => `<option>${d}</option>`).join("")}</select></label>
         <label>до<select name="dmax">${[1, 2, 3, 4, 5].map((d) => `<option ${d === 5 ? "selected" : ""}>${d}</option>`).join("")}</select></label>
@@ -857,7 +867,12 @@ function pageVariant() {
     </form>
     <div id="vres"></div>`);
   const vsec = document.getElementById("vsec"), vtop = document.getElementById("vtop");
-  vsec.onchange = () => (vtop.innerHTML = topicOptions(vsec.value, ""));
+  const vgr = document.getElementById("vgr");
+  vsec.onchange = () => (vtop.innerHTML = topicOptions(vsec.value, vtop.value, "Все темы", vgr.value));
+  vgr.onchange = () => {
+    vsec.innerHTML = sectionOptions(vsec.value, vgr.value);
+    vtop.innerHTML = topicOptions(vsec.value, vtop.value, "Все темы", vgr.value);
+  };
   document.getElementById("vf").onsubmit = async (e) => {
     e.preventDefault(); const f = form(e.target);
     let query = sb.from("tasks").select("id, grade, difficulty, condition, topic_id").eq("status", "published")
