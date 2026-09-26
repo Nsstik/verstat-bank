@@ -49,7 +49,6 @@ function go(hash) { if (location.hash === hash) route(); else location.hash = ha
 function renderLogin(msg = "") {
   $app.innerHTML = `
   <div class="auth">
-    <img src="logo-192.png" alt="" class="auth-logo">
     <h1>Банк задач<br><small>Вероятность и статистика</small></h1>
     <p class="muted">Вход только для учителей.</p>
     ${msg ? `<p class="note">${esc(msg)}</p>` : ""}
