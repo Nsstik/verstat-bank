@@ -18,6 +18,9 @@ code, .mono { font-family: Consolas, "Courier New", monospace; font-size: .9rem;
 .top { background: var(--paper); border-bottom: 1px solid var(--line); padding: .6rem 1.2rem; display: flex; flex-wrap: wrap; gap: .6rem 1.4rem; align-items: center; position: sticky; top: 0; z-index: 5; }
 .brand { font-weight: 700; text-decoration: none; color: var(--ink); }
 .brand span { font-weight: 400; color: var(--muted); }
+.brand { display: inline-flex; align-items: center; gap: .5rem; }
+.logo { width: 34px; height: 34px; }
+.auth-logo { width: 72px; height: 72px; display: block; margin-bottom: .6rem; }
 .top nav { display: flex; flex-wrap: wrap; gap: .2rem; flex: 1; }
 .top nav a { text-decoration: none; padding: .35rem .7rem; border-radius: 8px; color: var(--ink); }
 .top nav a.on, .top nav a:hover { background: #e9eef4; color: var(--accent); }

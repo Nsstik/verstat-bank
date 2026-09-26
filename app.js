@@ -49,6 +49,7 @@ function go(hash) { if (location.hash === hash) route(); else location.hash = ha
 function renderLogin(msg = "") {
   $app.innerHTML = `
   <div class="auth">
+    <img src="logo-192.png" alt="" class="auth-logo">
     <h1>Банк задач<br><small>Вероятность и статистика</small></h1>
     <p class="muted">Вход только для учителей.</p>
     ${msg ? `<p class="note">${esc(msg)}</p>` : ""}
@@ -261,7 +262,7 @@ function shell(active, inner) {
   ];
   $app.innerHTML = `
   <header class="top">
-    <a class="brand" href="#/tasks">Вероятность и статистика <span>банк задач</span></a>
+    <a class="brand" href="#/tasks"><img src="logo-192.png" alt="" class="logo">Вероятность и статистика <span>банк задач</span></a>
     <nav>${nav.map(([h, t]) => `<a href="${h}" class="${active === h ? "on" : ""}">${t}</a>`).join("")}</nav>
     <div class="me"><a href="#/profile" title="Мой профиль">${esc(S.profile.full_name)}</a>${isAdmin() ? ' <span class="tag">админ</span>' : ""} <button class="link" data-act="logout">Выйти</button></div>
   </header>
