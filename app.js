@@ -490,7 +490,8 @@ async function pageTask(id) {
       <div class="kinds">${Object.entries(P.KINDS).map(([k, v], i) =>
         `<label class="kind"><input type="radio" name="kind" value="${k}" ${i === 0 ? "checked" : ""}><b>${v.title}</b><span>${v.hint}</span></label>`).join("")}</div>
       <div class="row">
-        <label>Сколько задач <input id="aiCount" type="number" min="1" max="5" value="3" style="width:4em"></label>
+        <label id="aiCountWrap">Сколько задач <input id="aiCount" type="number" min="1" max="5" value="3" style="width:4em"></label>
+        <span id="aiCountHint" class="small muted" style="display:none">ИИ даст один ответ к этой задаче</span>
         <label class="check" title="Для эксперимента: сравнить ответы ИИ с контекстом базы и без него"><input type="checkbox" id="aiCtx" checked> передать методический контекст из базы</label>
       </div>
       <div class="row">
@@ -526,8 +527,12 @@ async function pageTask(id) {
   };
   S.ai = { task: t, gen: null, kind: null, parsed: null };
   const kindRadios = [...document.querySelectorAll('input[name="kind"]')];
-  const cnt = document.getElementById("aiCount");
-  const syncCount = () => (cnt.disabled = !P.KINDS[kindRadios.find((r) => r.checked).value].multi);
+  const cntWrap = document.getElementById("aiCountWrap"), cntHint = document.getElementById("aiCountHint");
+  const syncCount = () => {             // количество – только для запросов, где ИИ создаёт несколько задач
+    const multi = P.KINDS[kindRadios.find((r) => r.checked).value].multi;
+    cntWrap.style.display = multi ? "" : "none";
+    cntHint.style.display = multi ? "none" : "";
+  };
   kindRadios.forEach((r) => (r.onchange = syncCount)); syncCount();
 }
 
